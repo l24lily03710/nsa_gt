@@ -1,0 +1,8 @@
+db_host: 34.155.246.21
+db_admin_username: root
+db_admin_password: yoda
+db_database: my_laravel_db
+db_username: myuser
+db_password: yoda
+vars_files:
+  - secret.yml

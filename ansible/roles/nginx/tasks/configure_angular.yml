@@ -1,0 +1,12 @@
+- name: Copy Angular Nginx configuration
+  template:
+    src: angular_nginx.conf.j2
+    dest: /etc/nginx/sites-available/angular
+  notify: restart nginx
+
+- name: Enable Angular site
+  file:
+    src: /etc/nginx/sites-available/angular
+    dest: /etc/nginx/sites-enabled/angular
+    state: link
+  notify: restart nginx

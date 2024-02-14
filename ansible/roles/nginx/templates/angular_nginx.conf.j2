@@ -1,0 +1,10 @@
+server {
+    listen 80;
+    server_name 34.163.156.134;
+
+    location / {
+        root /var/www/NSA/front/dist/front;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

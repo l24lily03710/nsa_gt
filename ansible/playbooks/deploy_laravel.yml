@@ -1,0 +1,128 @@
+---
+- hosts: laravel_server
+  become: true
+  vars_files:
+    - secret.yml
+  vars:
+    nexus_url: "http://34.163.20.124:8081"
+    laravel_artifacts_repo: "laravel-artifacts"
+    laravel_root: "/home/mmenni54/NSA/back/back/public"
+    laravel_app_root: "/home/mmenni54/NSA/back/back"
+    nexus_credentials: "admin:admin"
+    laravel_app_key: "base64:h55oToUypq1BJwhcBAbtCnKscJGGS7xXF3zoDNf/yWE="
+    laravel_app_url: "http://34.155.132.173"
+    laravel_db_host: "34.155.246.21"
+    laravel_db_database: "my_laravel_db"
+    laravel_db_username: "myuser"
+    laravel_db_password: "yoda"
+
+  tasks:
+    - name: Download Laravel artifact from Nexus
+      get_url:
+        url: "{{ nexus_url }}/repository/{{ laravel_artifacts_repo }}/laravel_app.zip"
+        dest: "/tmp/laravel_app.zip"
+        headers:
+          Authorization: "Basic YWRtaW46YWRtaW4="
+
+    - name: Ensure unzip is installed
+      apt:
+        name: unzip
+        state: present
+      become: yes
+
+    - name: Create a temporary directory for Laravelr artifact
+      file:
+        path: /tmp/laravel_tmp  
+        state: directory
+      become: yes
+
+    - name: Unzip Laravel artifact to a temporary directory
+      command: unzip -o /tmp/laravel_app.zip -d /tmp/laravel_tmp
+      become: yes
+
+    - name: Ensure rsync is installed
+      apt:
+        name: rsync
+        state: present
+      become: yes
+
+    - name: Sync unzipped files to the target directory
+      shell: rsync -av --delete --exclude 'vendor/' --exclude 'composer.lock' /tmp/laravel_tmp/ /home/mmenni54/NSA/back/
+      become: yes
+      args:
+        removes: /tmp/laravel_app.zip
+
+    - name: Ensure Composer is installed globally
+      shell: |
+        if [ ! -f /usr/local/bin/composer ]; then
+          curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+        fi
+      args:
+        executable: /bin/bash
+      become: yes
+
+    - name: Debug - Check vendor directory before Composer install
+      command: ls -la /home/mmenni54/NSA/back/back
+      ignore_errors: yes
+
+    - name: Install Composer dependencies
+      command: composer install --no-dev --optimize-autoloader
+      args:
+       chdir: "{{ laravel_app_root }}"
+      environment:
+       COMPOSER_HOME: "/root/.composer"
+       COMPOSER_ALLOW_SUPERUSER: "1"
+      become: yes
+
+    - name: Debug - Check vendor directory after Composer install
+      command: ls -la /home/mmenni54/NSA/back/back
+      ignore_errors: yes
+
+    - name: Adjust ownership of Laravel directory
+      file:
+        path: "{{ item }}"
+        owner: mmenni54
+        group: mmenni54
+        recurse: yes
+      loop:
+        - "{{ laravel_app_root }}"
+        - "{{ laravel_app_root }}/vendor"
+      become: yes
+
+    - name: Set permissions for Laravel directory
+      file:
+        path: "{{ laravel_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    - name: Copy environment configuration for Laravel
+      template:
+        src: "templates/laravel.env.j2"
+        dest: "{{ laravel_app_root }}/.env"
+        owner: www-data
+        group: www-data
+        mode: "0644"
+
+    - name: Run Laravel migrations
+      command: php artisan migrate --force -v
+      args:
+        chdir: "{{ laravel_app_root }}"
+      become: true
+      environment:
+        DB_CONNECTION: mysql
+        DB_HOST: "{{ laravel_db_host }}"
+        DB_PORT: 3306
+        DB_DATABASE: "{{ laravel_db_database }}"
+        DB_USERNAME: "{{ laravel_db_username }}"
+        DB_PASSWORD: "{{ laravel_db_password }}"
+        APP_ENV: production
+
+    - name: Restart nginx and php-fpm services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - nginx
+        - php7.4-fpm

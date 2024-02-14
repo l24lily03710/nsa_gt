@@ -1,0 +1,67 @@
+---
+- hosts: angular_server
+  become: true
+  vars_files:
+    - secret.yml
+  vars:
+    nexus_url: "http://34.163.20.124:8081"
+    angular_artifacts_repo: "angular-artifacts"
+    angular_root: "/var/www/NSA/front/dist/front"
+    nexus_credentials: "admin:admin"
+
+  tasks:
+    - name: Download Angular artifact from Nexus
+      get_url:
+        url: "{{ nexus_url }}/repository/{{ angular_artifacts_repo }}/angular_app.zip"
+        dest: "/tmp/angular_app.zip"
+        headers:
+          Authorization: "Basic YWRtaW46YWRtaW4="
+    
+    - name: Ensure unzip is installed
+      apt:
+        name: unzip
+        state: present
+
+    - name: Create a temporary directory for Angular artifact
+      file:
+        path: /tmp/angular_tmp
+        state: directory
+
+    - name: Unzip Angular artifact to a temporary directory
+      command: unzip -o /tmp/angular_app.zip -d /tmp/angular_tmp
+
+    - name: Set ownership and permissions before build
+      file:
+        path: "/var/www/NSA/front"
+        state: directory
+        owner: mmenni54
+        group: mmenni54
+        mode: '0755'
+
+
+    - name: Build Angular project with correct Node.js version
+      shell: |
+       source ~/.nvm/nvm.sh
+       nvm use v18.19.0
+       ng build --prod
+      args:
+       chdir: "/var/www/NSA/front"
+       executable: /bin/bash
+      environment:
+       PATH: "/home/mmenni54/.nvm/versions/node/v18.19.0/bin:{{ ansible_env.PATH }}"
+       NODE_OPTIONS: "--openssl-legacy-provider"
+      become: true
+  
+
+    - name: Set permissions for Angular directory (after build)
+      file:
+        path: "{{ angular_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    - name: Restart nginx service
+      systemd:
+        name: nginx
+        state: restarted

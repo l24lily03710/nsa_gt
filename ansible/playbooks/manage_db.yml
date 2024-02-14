@@ -1,0 +1,28 @@
+- hosts: localhost
+  gather_facts: no
+  vars:
+    db_host: 34.155.246.21
+    db_admin_username: root
+    db_admin_password: "your_admin_password"
+    db_database: my_laravel_db
+    db_username: myuser
+    db_password: "yoda"
+  tasks:
+    - name: Ensure the database exists
+      community.mysql.mysql_db:
+        login_host: "{{ db_host }}"
+        login_user: "{{ db_admin_username }}"
+        login_password: "{{ db_admin_password }}"
+        name: "{{ db_database }}"
+        state: present
+
+    - name: Ensure the database user has access
+      community.mysql.mysql_user:
+        login_host: "{{ db_host }}"
+        login_user: "{{ db_admin_username }}"
+        login_password: "{{ db_admin_password }}"
+        name: "{{ db_username }}"
+        password: "{{ db_password }}"
+        host: "%" # Allows connection from any host
+        priv: "{{ db_database }}.*:ALL"
+        state: present

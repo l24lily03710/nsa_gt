@@ -1,0 +1,7 @@
+laravel_server_name: "34.155.132.173"
+laravel_root: "/home/mmenni54/NSA/back/back/public"
+php_version: "7.4"
+angular_server_name: "34.163.156.134"
+angular_root: "/var/www/NSA/front/dist/front"
+vars_files:
+  - secret.yml

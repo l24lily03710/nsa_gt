@@ -1,0 +1,19 @@
+---
+- name: Ensure database exists
+  community.mysql.mysql_db:
+    name: "{{ db_database }}"
+    state: present
+    login_host: "{{ db_host }}"
+    login_user: "{{ db_admin_username }}"
+    login_password: "{{ db_admin_password }}"
+
+- name: Ensure user has access with the correct privileges
+  community.mysql.mysql_user:
+    name: "{{ db_username }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_database }}.*:ALL"
+    state: present
+    login_host: "{{ db_host }}"
+    login_user: "{{ db_admin_username }}"
+    login_password: "{{ db_admin_password }}"
+    host: "%"

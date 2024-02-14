@@ -1,0 +1,9 @@
+---
+- name: Install and configure Nginx for Laravel and Angular
+  include_tasks: install_nginx.yml
+
+- name: Configure Nginx for Laravel
+  include_tasks: configure_laravel.yml
+
+- name: Configure Nginx for Angular
+  include_tasks: configure_angular.yml
